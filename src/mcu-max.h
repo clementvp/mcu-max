@@ -20,7 +20,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#define MCUMAX_ID "mcu-max 1.0.5"
+#define MCUMAX_ID "mcu-max 1.0.6"
 #define MCUMAX_AUTHOR "Gissio"
 
 #define MCUMAX_SQUARE_INVALID 0x80

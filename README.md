@@ -8,7 +8,7 @@ mcu-max comes with an Arduino serial port example, and a UCI chess interface exa
 
 When running on devices with little memory, you might want to adjust the max depth value to avoid stack overflows.
 
-Download the [Rad Pro simulator](https://www.github.com/gissio/radpro/releases) to try mcu-max.
+Try the [Rad Pro simulator](https://gissio.github.io/radpro-simulator/) (click the right button and select Game at the bottom of the menu) to test mcu-max.
 
 ## Features
 

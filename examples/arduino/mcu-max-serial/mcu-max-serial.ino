@@ -12,6 +12,8 @@
 #define MCUMAX_NODE_MAX 1000
 #define MCUMAX_DEPTH_MAX 3
 
+#define GAME_VALID_MOVES_NUM_MAX 181
+
 void print_board() {
   const char *symbols = ".PPNKBRQ.ppnkbrq";
 
@@ -116,10 +118,20 @@ void loop() {
 
   Serial.println("");
 
-  if (!mcumax_play_move((mcumax_move){
-        get_square(serial_input + 0),
-        get_square(serial_input + 2),
-      }))
+  mcumax_move move = (mcumax_move){
+    get_square(serial_input + 0),
+    get_square(serial_input + 2),
+  };
+
+  mcumax_move valid_moves[GAME_VALID_MOVES_NUM_MAX];
+  uint32_t valid_moves_num = mcumax_search_valid_moves(valid_moves, GAME_VALID_MOVES_NUM_MAX);
+  bool is_valid_move = false;
+  for (uint32_t i = 0; i < valid_moves_num; i++)
+    if ((valid_moves[i].from == move.from) &&
+      (valid_moves[i].to == move.to))
+      is_valid_move = true;
+
+  if (!is_valid_move || !mcumax_play_move(move))
     Serial.println("Invalid move.");
   else {
     mcumax_move move = mcumax_search_best_move(MCUMAX_NODE_MAX, MCUMAX_DEPTH_MAX);
