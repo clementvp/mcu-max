@@ -15,7 +15,7 @@ Try the [Rad Pro simulator](https://gissio.github.io/radpro-simulator/) (click t
 * Configurable hashing.
 * Configurable node limit.
 * Configurable max depth.
-* Valid move Listing.
+* Valid move listing.
 * Best-move search termination.
 
 ## Terms of use
