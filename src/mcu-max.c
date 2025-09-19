@@ -35,40 +35,7 @@ enum mcumax_mode
     MCUMAX_PLAY_MOVE,
 };
 
-struct
-{
-    // Board: first half of 16x8 + dummy
-    uint8_t board[0x80 + 1];
-    uint8_t current_side;
-
-    // Engine
-    int32_t score;
-    uint8_t en_passant_square;
-    int32_t non_pawn_material;
-
-#ifdef MCUMAX_HASHING_ENABLED
-    uint32_t hash_key;
-    uint32_t hash_key2;
-#endif
-
-    // Interface
-    uint8_t square_from; // Selected move
-    uint8_t square_to;
-
-    uint32_t node_count;
-    uint32_t node_max;
-    uint32_t depth_max;
-
-    bool stop_search;
-
-    // Extra
-    mcumax_callback user_callback;
-    void *user_data;
-
-    mcumax_move *valid_moves_buffer;
-    uint32_t valid_moves_buffer_size;
-    uint32_t valid_moves_num;
-} mcumax;
+mcumax_struct mcumax;
 
 static const int8_t mcumax_capture_values[] = {
     0, 2, 2, 7, -1, 8, 12, 23};
@@ -919,4 +886,71 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata)
 void mcumax_stop_search(void)
 {
     mcumax.stop_search = true;
+}
+
+bool is_in_check(uint8_t side) {
+    uint8_t king_mask = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_WHITE : MCUMAX_BOARD_BLACK;
+    uint8_t enemy_mask = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_BLACK : MCUMAX_BOARD_WHITE;
+    mcumax_square king_square = MCUMAX_SQUARE_INVALID;
+    // Trouver le roi
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            mcumax_square sq = y * 16 + x;
+            uint8_t raw = mcumax.board[sq];
+            if ((raw & king_mask) && ((raw & 0b111) == MCUMAX_KING)) {
+                king_square = sq;
+            }
+        }
+    }
+    if (king_square == MCUMAX_SQUARE_INVALID)
+        return false;
+    // Directions tour/fou/reine
+    int directions[8] = {1, -1, 16, -16, 15, -15, 17, -17};
+    // Scan rayons
+    for (int d = 0; d < 8; d++) {
+        mcumax_square sq = king_square;
+        while (1) {
+            sq += directions[d];
+            if (sq & 0x88) break;
+            uint8_t raw = mcumax.board[sq];
+            if (!raw) continue;
+            if ((raw & enemy_mask)) {
+                int type = raw & 0b111;
+                // Tour ou reine sur lignes/colonnes
+                if ((d < 4) && (type == MCUMAX_ROOK || type == MCUMAX_QUEEN)) return true;
+                // Fou ou reine sur diagonales
+                if ((d >= 4) && (type == MCUMAX_BISHOP || type == MCUMAX_QUEEN)) return true;
+            }
+            break;
+        }
+    }
+    // Cavaliers
+    int knight_moves[8] = {14, 18, 31, 33, -14, -18, -31, -33};
+    for (int i = 0; i < 8; i++) {
+        mcumax_square sq = king_square + knight_moves[i];
+        if (!(sq & 0x88)) {
+            uint8_t raw = mcumax.board[sq];
+            if ((raw & enemy_mask) && ((raw & 0b111) == MCUMAX_KNIGHT)) return true;
+        }
+    }
+    // Pions
+    int pawn_dir = (side == MCUMAX_BOARD_WHITE) ? -16 : 16;
+    int pawn_attacks[2] = {pawn_dir + 1, pawn_dir - 1};
+    for (int i = 0; i < 2; i++) {
+        mcumax_square sq = king_square + pawn_attacks[i];
+        if (!(sq & 0x88)) {
+            uint8_t raw = mcumax.board[sq];
+            if ((raw & enemy_mask) && ((raw & 0b111) == ((side == MCUMAX_BOARD_WHITE) ? MCUMAX_PAWN_DOWNSTREAM : MCUMAX_PAWN_UPSTREAM))) return true;
+        }
+    }
+    // Roi adverse
+    int king_moves[8] = {1, -1, 16, -16, 15, -15, 17, -17};
+    for (int i = 0; i < 8; i++) {
+        mcumax_square sq = king_square + king_moves[i];
+        if (!(sq & 0x88)) {
+            uint8_t raw = mcumax.board[sq];
+            if ((raw & enemy_mask) && ((raw & 0b111) == MCUMAX_KING)) return true;
+        }
+    }
+    return false;
 }
