@@ -52,11 +52,3 @@ int main() {
 ### Exemple Arduino
 
 Voir `examples/arduino/mcu-max-serial/mcu-max-serial.ino` pour une intégration sur microcontrôleur.
-
-## Documentation
-
-Des exemples et schémas sont disponibles dans le dossier `docs/`.
-
-## Licence
-
-Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus d’informations.
