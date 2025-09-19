@@ -37,18 +37,6 @@ Les binaires seront générés dans le dossier `build/`.
 
 ## Utilisation
 
-### Exemple minimal en C
-
-```c
-#include "mcu-max.h"
-
-int main() {
-	// Initialisation et utilisation de la bibliothèque
-	// ...
-	return 0;
-}
-```
-
 ### Exemple Arduino
 
 Voir `examples/arduino/mcu-max-serial/mcu-max-serial.ino` pour une intégration sur microcontrôleur.
