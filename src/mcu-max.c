@@ -888,7 +888,7 @@ void mcumax_stop_search(void)
     mcumax.stop_search = true;
 }
 
-bool is_in_check(uint8_t side) {
+bool mcumax_is_in_check(uint8_t side) {
     uint8_t king_mask = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_WHITE : MCUMAX_BOARD_BLACK;
     uint8_t enemy_mask = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_BLACK : MCUMAX_BOARD_WHITE;
     mcumax_square king_square = MCUMAX_SQUARE_INVALID;
@@ -989,9 +989,9 @@ bool is_in_check(uint8_t side) {
     return false;
 }
 
-bool is_checkmate(uint8_t side) {
+bool mcumax_is_in_checkmate(uint8_t side) {
     // 1. Vérifier si le roi est en échec (condition nécessaire pour le mat)
-    if (!is_in_check(side)) {
+    if (!mcumax_is_in_check(side)) {
         return false; // Pas en échec = pas mat
     }
     
@@ -1022,7 +1022,7 @@ bool is_checkmate(uint8_t side) {
         // Jouer le coup temporairement
         if (mcumax_play_move(valid_moves[i])) {
             // Vérifier si le roi est encore en échec après ce coup
-            bool still_in_check = is_in_check(side);
+            bool still_in_check = mcumax_is_in_check(side);
             
             // Restaurer l'état
             memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
@@ -1062,9 +1062,9 @@ bool is_checkmate(uint8_t side) {
     return true;
 }
 
-bool is_stalemate(uint8_t side) {
+bool mcumax_is_stalemate(uint8_t side) {
     // 1. Vérifier si le roi N'est PAS en échec (condition nécessaire pour le pat)
-    if (is_in_check(side)) {
+    if (mcumax_is_in_check(side)) {
         return false; // En échec = pas pat (c'est potentiellement mat)
     }
     
@@ -1095,7 +1095,7 @@ bool is_stalemate(uint8_t side) {
         // Jouer le coup temporairement
         if (mcumax_play_move(valid_moves[i])) {
             // Vérifier si ce coup met son propre roi en échec (coup illégal)
-            bool puts_own_king_in_check = is_in_check(side);
+            bool puts_own_king_in_check = mcumax_is_in_check(side);
             
             // Restaurer l'état
             memcpy(mcumax.board, temp_board, sizeof(mcumax.board));

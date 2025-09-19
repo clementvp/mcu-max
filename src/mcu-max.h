@@ -124,13 +124,13 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata);
 void mcumax_stop_search(void);
 
 // Vérifie si le roi du camp donné est en échec
-bool is_in_check(uint8_t side);
+bool mcumax_is_in_check(uint8_t side);
 
 // Vérifie si le roi du camp donné est en mat
-bool is_checkmate(uint8_t side);
+bool mcumax_is_in_checkmate(uint8_t side);
 
 // Vérifie si le roi du camp donné est en pat (stalemate)
-bool is_stalemate(uint8_t side);
+bool mcumax_is_stalemate(uint8_t side);
 
 // Exporte la position actuelle au format FEN
 void mcumax_get_fen(char* fen_buffer, size_t buffer_size);
