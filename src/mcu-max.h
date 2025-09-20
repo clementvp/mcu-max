@@ -19,6 +19,7 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stddef.h>
 #define MCUMAX_ID "mcu-max 1.0.6"
 #define MCUMAX_AUTHOR "Gissio"
 
