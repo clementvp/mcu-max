@@ -124,16 +124,24 @@ void mcumax_set_callback(mcumax_callback callback, void *userdata);
  */
 void mcumax_stop_search(void);
 
-// Vérifie si le roi du camp donné est en échec
+/**
+ * Checks if the king of the given side is in check.
+ */
 bool mcumax_is_in_check(uint8_t side);
 
-// Vérifie si le roi du camp donné est en mat
+/**
+ * Checks if the king of the given side is in checkmate.
+ */
 bool mcumax_is_in_checkmate(uint8_t side);
 
-// Vérifie si le roi du camp donné est en pat (stalemate)
+/**
+ * Checks if the king of the given side is in stalemate.
+ */
 bool mcumax_is_stalemate(uint8_t side);
 
-// Exporte la position actuelle au format FEN
+/**
+ * Exports the current position in FEN format.
+ */
 void mcumax_get_fen(char* fen_buffer, size_t buffer_size);
 
 typedef struct mcumax_struct {

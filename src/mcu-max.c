@@ -893,7 +893,7 @@ bool mcumax_is_in_check(uint8_t side) {
     uint8_t enemy_mask = (side == MCUMAX_BOARD_WHITE) ? MCUMAX_BOARD_BLACK : MCUMAX_BOARD_WHITE;
     mcumax_square king_square = MCUMAX_SQUARE_INVALID;
     
-    // Trouver le roi
+    // Find the king
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
             mcumax_square sq = y * 16 + x;
@@ -909,42 +909,42 @@ bool mcumax_is_in_check(uint8_t side) {
     if (king_square == MCUMAX_SQUARE_INVALID)
         return false;
     
-    // Directions : horizontales/verticales puis diagonales
+    // Directions: horizontal/vertical then diagonals
     int directions[8] = {1, -1, 16, -16, 15, -15, 17, -17};
     
-    // Scan rayons pour tours, fous et reines
+    // Scan rays for rooks, bishops and queens
     for (int d = 0; d < 8; d++) {
         int current_sq = king_square;
         
         while (1) {
             current_sq += directions[d];
             
-            // Vérification des limites du plateau 0x88
+            // Check 0x88 board limits
             if (current_sq & 0x88) {
                 break;
             }
             
             uint8_t raw = mcumax.board[current_sq];
             if (raw) {
-                // Si c'est une pièce ennemie
+                // If it's an enemy piece
                 if (raw & enemy_mask) {
                     int type = raw & 0b111;
-                    // Tour ou reine sur lignes/colonnes (directions 0-3)
+                    // Rook or queen on lines/columns (directions 0-3)
                     if ((d < 4) && (type == MCUMAX_ROOK || type == MCUMAX_QUEEN)) {
                         return true;
                     }
-                    // Fou ou reine sur diagonales (directions 4-7)
+                    // Bishop or queen on diagonals (directions 4-7)
                     if ((d >= 4) && (type == MCUMAX_BISHOP || type == MCUMAX_QUEEN)) {
                         return true;
                     }
                 }
-                // Une pièce bloque le rayon, on arrête
+                // A piece blocks the ray, stop
                 break;
             }
         }
     }
     
-    // Vérification des cavaliers
+    // Check knights
     int knight_moves[8] = {14, 18, 31, 33, -14, -18, -31, -33};
     for (int i = 0; i < 8; i++) {
         int sq = king_square + knight_moves[i];
@@ -956,7 +956,7 @@ bool mcumax_is_in_check(uint8_t side) {
         }
     }
     
-    // Vérification des pions
+    // Check pawns
     int pawn_dir = (side == MCUMAX_BOARD_WHITE) ? -16 : 16;
     int pawn_attacks[2] = {pawn_dir - 1, pawn_dir + 1};
     for (int i = 0; i < 2; i++) {
@@ -965,7 +965,7 @@ bool mcumax_is_in_check(uint8_t side) {
             uint8_t raw = mcumax.board[sq];
             if (raw & enemy_mask) {
                 int type = raw & 0b111;
-                // Pion blanc attaque vers le haut (UPSTREAM), pion noir vers le bas (DOWNSTREAM)
+                // White pawn attacks upward (UPSTREAM), black pawn downward (DOWNSTREAM)
                 if ((side == MCUMAX_BOARD_WHITE && type == MCUMAX_PAWN_DOWNSTREAM) ||
                     (side == MCUMAX_BOARD_BLACK && type == MCUMAX_PAWN_UPSTREAM)) {
                     return true;
@@ -974,7 +974,7 @@ bool mcumax_is_in_check(uint8_t side) {
         }
     }
     
-    // Vérification du roi adverse (attaque adjacente)
+    // Check opposing king (adjacent attack)
     int king_moves[8] = {1, -1, 16, -16, 15, -15, 17, -17};
     for (int i = 0; i < 8; i++) {
         int sq = king_square + king_moves[i];
@@ -990,12 +990,12 @@ bool mcumax_is_in_check(uint8_t side) {
 }
 
 bool mcumax_is_in_checkmate(uint8_t side) {
-    // 1. Vérifier si le roi est en échec (condition nécessaire pour le mat)
+    // 1. Check if the king is in check (necessary condition for mate)
     if (!mcumax_is_in_check(side)) {
-        return false; // Pas en échec = pas mat
+        return false; // Not in check = not mate
     }
     
-    // 2. Sauvegarder l'état actuel du moteur
+    // 2. Save the current engine state
     uint8_t board_backup[sizeof(mcumax.board)];
     memcpy(board_backup, mcumax.board, sizeof(mcumax.board));
     uint8_t current_side_backup = mcumax.current_side;
@@ -1003,37 +1003,37 @@ bool mcumax_is_in_checkmate(uint8_t side) {
     int32_t score_backup = mcumax.score;
     int32_t npm_backup = mcumax.non_pawn_material;
     
-    // 3. S'assurer que c'est au tour du camp testé
+    // 3. Make sure it's the tested side's turn
     mcumax.current_side = side;
     
-    // 4. Générer tous les coups légaux possibles
-    mcumax_move valid_moves[256]; // Buffer suffisant pour tous les coups possibles
+    // 4. Generate all possible legal moves
+    mcumax_move valid_moves[256]; // Buffer large enough for all possible moves
     uint32_t moves_count = mcumax_search_valid_moves(valid_moves, 256);
     
-    // 5. Tester chaque coup pour voir s'il sort le roi de l'échec
+    // 5. Test each move to see if it gets the king out of check
     for (uint32_t i = 0; i < moves_count; i++) {
-        // Sauvegarder l'état avant de jouer le coup
+        // Save state before playing the move
         uint8_t temp_board[sizeof(mcumax.board)];
         memcpy(temp_board, mcumax.board, sizeof(mcumax.board));
         uint8_t temp_en_passant = mcumax.en_passant_square;
         int32_t temp_score = mcumax.score;
         int32_t temp_npm = mcumax.non_pawn_material;
         
-        // Jouer le coup temporairement
+        // Play the move temporarily
         if (mcumax_play_move(valid_moves[i])) {
-            // Vérifier si le roi est encore en échec après ce coup
+            // Check if the king is still in check after this move
             bool still_in_check = mcumax_is_in_check(side);
             
-            // Restaurer l'état
+            // Restore state
             memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
             mcumax.en_passant_square = temp_en_passant;
             mcumax.score = temp_score;
             mcumax.non_pawn_material = temp_npm;
             mcumax.current_side = side;
             
-            // Si ce coup sort le roi de l'échec, ce n'est pas mat
+            // If this move gets the king out of check, it's not mate
             if (!still_in_check) {
-                // Restaurer l'état complet du moteur
+                // Restore full engine state
                 memcpy(mcumax.board, board_backup, sizeof(mcumax.board));
                 mcumax.current_side = current_side_backup;
                 mcumax.en_passant_square = en_passant_backup;
@@ -1042,7 +1042,7 @@ bool mcumax_is_in_checkmate(uint8_t side) {
                 return false;
             }
         } else {
-            // Le coup n'a pas pu être joué, restaurer quand même
+            // The move could not be played, restore anyway
             memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
             mcumax.en_passant_square = temp_en_passant;
             mcumax.score = temp_score;
@@ -1051,24 +1051,24 @@ bool mcumax_is_in_checkmate(uint8_t side) {
         }
     }
     
-    // 6. Restaurer l'état complet du moteur
+    // 6. Restore full engine state
     memcpy(mcumax.board, board_backup, sizeof(mcumax.board));
     mcumax.current_side = current_side_backup;
     mcumax.en_passant_square = en_passant_backup;
     mcumax.score = score_backup;
     mcumax.non_pawn_material = npm_backup;
     
-    // 7. Si aucun coup ne sort de l'échec, c'est mat
+    // 7. If no move gets out of check, it's mate
     return true;
 }
 
 bool mcumax_is_stalemate(uint8_t side) {
-    // 1. Vérifier si le roi N'est PAS en échec (condition nécessaire pour le pat)
+    // 1. Check if the king is NOT in check (necessary condition for stalemate)
     if (mcumax_is_in_check(side)) {
-        return false; // En échec = pas pat (c'est potentiellement mat)
+        return false; // In check = not stalemate (potentially mate)
     }
     
-    // 2. Sauvegarder l'état actuel du moteur
+    // 2. Save the current engine state
     uint8_t board_backup[sizeof(mcumax.board)];
     memcpy(board_backup, mcumax.board, sizeof(mcumax.board));
     uint8_t current_side_backup = mcumax.current_side;
@@ -1076,37 +1076,37 @@ bool mcumax_is_stalemate(uint8_t side) {
     int32_t score_backup = mcumax.score;
     int32_t npm_backup = mcumax.non_pawn_material;
     
-    // 3. S'assurer que c'est au tour du camp testé
+    // 3. Make sure it's the tested side's turn
     mcumax.current_side = side;
     
-    // 4. Générer tous les coups légaux possibles
-    mcumax_move valid_moves[256]; // Buffer suffisant pour tous les coups possibles
+    // 4. Generate all possible legal moves
+    mcumax_move valid_moves[256]; // Buffer large enough for all possible moves
     uint32_t moves_count = mcumax_search_valid_moves(valid_moves, 256);
     
-    // 5. Tester chaque coup pour voir s'il est vraiment légal (ne met pas son propre roi en échec)
+    // 5. Test each move to see if it is really legal (does not put own king in check)
     for (uint32_t i = 0; i < moves_count; i++) {
-        // Sauvegarder l'état avant de jouer le coup
+        // Save state before playing the move
         uint8_t temp_board[sizeof(mcumax.board)];
         memcpy(temp_board, mcumax.board, sizeof(mcumax.board));
         uint8_t temp_en_passant = mcumax.en_passant_square;
         int32_t temp_score = mcumax.score;
         int32_t temp_npm = mcumax.non_pawn_material;
         
-        // Jouer le coup temporairement
+        // Play the move temporarily
         if (mcumax_play_move(valid_moves[i])) {
-            // Vérifier si ce coup met son propre roi en échec (coup illégal)
+            // Check if this move puts own king in check (illegal move)
             bool puts_own_king_in_check = mcumax_is_in_check(side);
             
-            // Restaurer l'état
+            // Restore state
             memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
             mcumax.en_passant_square = temp_en_passant;
             mcumax.score = temp_score;
             mcumax.non_pawn_material = temp_npm;
             mcumax.current_side = side;
             
-            // Si ce coup est légal (ne met pas son propre roi en échec), ce n'est pas pat
+            // If this move is legal (does not put own king in check), it's not stalemate
             if (!puts_own_king_in_check) {
-                // Restaurer l'état complet du moteur
+                // Restore full engine state
                 memcpy(mcumax.board, board_backup, sizeof(mcumax.board));
                 mcumax.current_side = current_side_backup;
                 mcumax.en_passant_square = en_passant_backup;
@@ -1115,7 +1115,7 @@ bool mcumax_is_stalemate(uint8_t side) {
                 return false;
             }
         } else {
-            // Le coup n'a pas pu être joué, restaurer quand même
+            // The move could not be played, restore anyway
             memcpy(mcumax.board, temp_board, sizeof(mcumax.board));
             mcumax.en_passant_square = temp_en_passant;
             mcumax.score = temp_score;
@@ -1124,26 +1124,26 @@ bool mcumax_is_stalemate(uint8_t side) {
         }
     }
     
-    // 6. Restaurer l'état complet du moteur
+    // 6. Restore full engine state
     memcpy(mcumax.board, board_backup, sizeof(mcumax.board));
     mcumax.current_side = current_side_backup;
     mcumax.en_passant_square = en_passant_backup;
     mcumax.score = score_backup;
     mcumax.non_pawn_material = npm_backup;
     
-    // 7. Si aucun coup légal n'est disponible et le roi n'est pas en échec, c'est pat
+    // 7. If no legal move is available and the king is not in check, it's stalemate
     return true;
 }
 
 void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
     if (!fen_buffer || buffer_size < 100) {
-        return; // Buffer trop petit pour une FEN complète
+        return; // Buffer too small for a complete FEN
     }
     
     char* ptr = fen_buffer;
-    size_t remaining = buffer_size - 1; // Garder de la place pour le '\0'
+    size_t remaining = buffer_size - 1; // Leave space for '\0'
     
-    // 1. Position des pièces (8 rangs séparés par '/')
+    // 1. Piece positions (8 ranks separated by '/')
     for (int rank = 0; rank < 8; rank++) {
         int empty_count = 0;
         
@@ -1154,7 +1154,7 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
             if (piece_raw == MCUMAX_EMPTY) {
                 empty_count++;
             } else {
-                // Écrire le nombre de cases vides si nécessaire
+                // Write the number of empty squares if needed
                 if (empty_count > 0) {
                     if (remaining < 1) return;
                     *ptr++ = '0' + empty_count;
@@ -1162,7 +1162,7 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
                     empty_count = 0;
                 }
                 
-                // Convertir la pièce en symbole FEN
+                // Convert piece to FEN symbol
                 char piece_char = '?';
                 int piece_type = piece_raw & 0b111;
                 bool is_white = (piece_raw & MCUMAX_BOARD_WHITE) != 0;
@@ -1195,14 +1195,14 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
             }
         }
         
-        // Écrire le nombre de cases vides à la fin du rang si nécessaire
+        // Write the number of empty squares at the end of the rank if needed
         if (empty_count > 0) {
             if (remaining < 1) return;
             *ptr++ = '0' + empty_count;
             remaining--;
         }
         
-        // Ajouter '/' sauf pour le dernier rang
+        // Add '/' except for the last rank
         if (rank < 7) {
             if (remaining < 1) return;
             *ptr++ = '/';
@@ -1210,20 +1210,20 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
         }
     }
     
-    // 2. Côté au trait
+    // 2. Side to move
     if (remaining < 2) return;
     *ptr++ = ' ';
     *ptr++ = (mcumax.current_side == MCUMAX_BOARD_WHITE) ? 'w' : 'b';
     remaining -= 2;
     
-    // 3. Droits de roque
+    // 3. Castling rights
     if (remaining < 2) return;
     *ptr++ = ' ';
     remaining--;
     
     bool has_castling = false;
     
-    // Roque blanc côté roi (K)
+    // White king-side castling (K)
     if (!(mcumax.board[0x74] & MCUMAX_PIECE_MOVED) && !(mcumax.board[0x77] & MCUMAX_PIECE_MOVED)) {
         if (remaining < 1) return;
         *ptr++ = 'K';
@@ -1231,7 +1231,7 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
         has_castling = true;
     }
     
-    // Roque blanc côté dame (Q)
+    // White queen-side castling (Q)
     if (!(mcumax.board[0x74] & MCUMAX_PIECE_MOVED) && !(mcumax.board[0x70] & MCUMAX_PIECE_MOVED)) {
         if (remaining < 1) return;
         *ptr++ = 'Q';
@@ -1239,7 +1239,7 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
         has_castling = true;
     }
     
-    // Roque noir côté roi (k)
+    // Black king-side castling (k)
     if (!(mcumax.board[0x04] & MCUMAX_PIECE_MOVED) && !(mcumax.board[0x07] & MCUMAX_PIECE_MOVED)) {
         if (remaining < 1) return;
         *ptr++ = 'k';
@@ -1247,7 +1247,7 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
         has_castling = true;
     }
     
-    // Roque noir côté dame (q)
+    // Black queen-side castling (q)
     if (!(mcumax.board[0x04] & MCUMAX_PIECE_MOVED) && !(mcumax.board[0x00] & MCUMAX_PIECE_MOVED)) {
         if (remaining < 1) return;
         *ptr++ = 'q';
@@ -1255,14 +1255,14 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
         has_castling = true;
     }
     
-    // Si aucun roque possible
+    // If no castling possible
     if (!has_castling) {
         if (remaining < 1) return;
         *ptr++ = '-';
         remaining--;
     }
     
-    // 4. Case en passant
+    // 4. En passant square
     if (remaining < 2) return;
     *ptr++ = ' ';
     remaining--;
@@ -1272,7 +1272,7 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
         *ptr++ = '-';
         remaining--;
     } else {
-        // Convertir la case en notation algébrique
+        // Convert square to algebraic notation
         int file = mcumax.en_passant_square & 0x0F;
         int rank = (mcumax.en_passant_square & 0xF0) >> 4;
         
@@ -1282,18 +1282,18 @@ void mcumax_get_fen(char* fen_buffer, size_t buffer_size) {
         remaining -= 2;
     }
     
-    // 5. Demi-coups (règle 50 coups) - Simplifié à 0 car non suivi par le moteur
+    // 5. Halfmove clock (50-move rule) - Simplified to 0 as not tracked by engine
     if (remaining < 3) return;
     *ptr++ = ' ';
     *ptr++ = '0';
     remaining -= 2;
     
-    // 6. Numéro du coup - Simplifié à 1 car non suivi par le moteur
+    // 6. Move number - Simplified to 1 as not tracked by engine
     if (remaining < 3) return;
     *ptr++ = ' ';
     *ptr++ = '1';
     remaining -= 2;
     
-    // Terminer la chaîne
+    // End the string
     *ptr = '\0';
 }
